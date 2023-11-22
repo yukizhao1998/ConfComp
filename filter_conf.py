@@ -29,6 +29,7 @@ def load_issue(conf):
         issue_fix_links = pd.read_csv(os.path.join(conf.data_path, project + ".csv"))
         for idx, row in issue_df[issue_df["project"] == project].iterrows():
             issue_key = row["Issue key"]
+            print(issue_key)
             if issue_key in visit_issues:
                 continue
             fix_commits = issue_fix_links[issue_fix_links["issue_key"] == issue_key]
@@ -42,19 +43,18 @@ def load_issue(conf):
                     for repo in conf.proj_repo[project]:
                         for commit in Repository(path_to_repo=os.path.join(conf.repo_path, repo.split("/")[1]),
                                                  only_commits=fix_commits["commit_id"].values).traverse_commits():
+                            print(commit.hash)
                             commit_rows = get_commit_row(commit)
                             commit_files, commits_methods = get_files(commit)
                             fix_commit_objs.append(Commit(commit.hash, project, commit_files, commits_methods, commit_rows))
                         for commit in Repository(path_to_repo=os.path.join(conf.repo_path, repo.split("/")[1]),
                                                  only_commits=buggy_commits["bug_hash"].values).traverse_commits():
+                            print(commit.hash)
                             commit_rows = get_commit_row(commit)
                             commit_files, commits_methods = get_files(commit)
                             buggy_commit_objs.append(Commit(commit.hash, project, commit_files, commits_methods, commit_rows))
                     issue.set_fix_commits(fix_commit_objs)
                     issue.set_buggy_commits(buggy_commit_objs)
-                    for commit in fix_commit_objs:
-                        print(commit.__dict__)
-                    print(issue.__dict__)
                     issues.append(issue.to_dict())
                     json.dump(issues, open(os.path.join(conf.data_path, "issues.json"), "w"))
             visit_issues.append(issue_key)

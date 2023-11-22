@@ -113,7 +113,7 @@ def get_files(commit):
             'filename': file.filename,
             'old_path': file.old_path,
             'new_path': file.new_path,
-            'change_type': file.change_type,        # i.e. added, deleted, modified or renamed
+            'change_type': str(file.change_type).split(".")[-1],        # i.e. added, deleted, modified or renamed
             'diff': file.diff,                      # diff of the file as git presents it (e.g. @@xx.. @@)
             'diff_parsed': file.diff_parsed,        # diff parsed in a dict containing added and deleted lines lines
             'num_lines_added': file.added_lines,        # number of lines added
@@ -135,10 +135,10 @@ def get_commit_row(commit):
     commit_row = {
         'hash': commit.hash,
         'author': commit.author.name,
-        'author_date': commit.author_date,
+        'author_date': commit.author_date.timestamp(),
         'author_timezone': commit.author_timezone,
         'committer': commit.committer.name,
-        'committer_date': commit.committer_date,
+        'committer_date': commit.committer_date.timestamp(),
         'committer_timezone': commit.committer_timezone,
         'msg': commit.msg,
         'merge': commit.merge,
@@ -152,9 +152,19 @@ def get_commit_row(commit):
     return commit_row
 
 class Commit:
-    def __init__(self, id, project, files, methods, rows):
+    def __init__(self, id=None, project=None, files=None, methods=None, rows=None):
         self.project = project
         self.id = id
         self.files = files
         self.methods = methods
         self.rows = rows
+
+    def to_dict(self):
+        return self.__dict__
+
+    def load_from_dict(self, d):
+        self.project = d["project"]
+        self.id = d["id"]
+        self.files = d["files"]
+        self.methods = d["methods"]
+        self.rows = d["rows"]

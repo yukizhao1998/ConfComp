@@ -41,6 +41,7 @@ def load_issue(conf):
         issue_fix_links = pd.read_csv(os.path.join(conf.data_path, project + ".csv"))
         for idx, row in issue_df[issue_df["project"] == project].iterrows():
             issue_key = row["Issue key"]
+            print(issue_key)
             if issue_key in visit_issues:
                 continue
             fix_commits = issue_fix_links[issue_fix_links["issue_key"] == issue_key]

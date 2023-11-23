@@ -12,4 +12,4 @@ class Conf:
                           'FLINK': ['apache/flink'], 'ROCKETMQ': ['apache/rocketmq'], 'CAMEL': ['apache/camel'],
                           'MAPREDUCE': ['apache/hadoop-mapreduce', 'apache/hadoop'], 'IGNITE': ['apache/ignite'],
                           'CASSANDRA': ['apache/cassandra'], 'HIVE': ['apache/hive'], 'ZOOKEEPER': ['apache/zookeeper']}
-        self.issue_split_epoch = 2
+        self.issue_split_epoch = 200

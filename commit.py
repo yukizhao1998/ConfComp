@@ -128,7 +128,7 @@ def get_files(commit):
         file_methods = get_methods(file, file_change_id)
         if file_methods is not None:
             commit_methods.extend(file_methods)
-        return commit_files, commit_methods
+    return commit_files, commit_methods
 
 
 def get_commit_row(commit):

@@ -3,7 +3,7 @@ from conf import Conf
 
 
 class Issue:
-    def __init__(self, key, id, summary, description, priority, create_time, update_time, fix_commits=None,
+    def __init__(self, key=None, id=None, summary=None, description=None, priority=None, create_time=None, update_time=None, fix_commits=None,
                  buggy_commits=None):
         self.key = key
         self.id = id

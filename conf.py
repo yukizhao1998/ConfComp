@@ -13,3 +13,4 @@ class Conf:
                           'MAPREDUCE': ['apache/hadoop-mapreduce', 'apache/hadoop'], 'IGNITE': ['apache/ignite'],
                           'CASSANDRA': ['apache/cassandra'], 'HIVE': ['apache/hive'], 'ZOOKEEPER': ['apache/zookeeper']}
         self.issue_split_epoch = 200
+        self.clean_split_epoch = 200

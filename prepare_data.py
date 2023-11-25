@@ -25,6 +25,22 @@ def save_issue(conf, project, issue):
     return
 
 
+def save_clean(conf, project, clean):
+    dir = os.path.join(conf.data_path, "clean", project)
+    if os.path.exists(dir):
+        file_cnt = len(os.listdir(dir))
+        his = json.load(open(os.path.join(dir, str(file_cnt) + ".json"), "r"))
+        if len(his) == conf.clean_split_epoch:
+            json.dump([clean.to_dict()], open(os.path.join(dir, str(file_cnt + 1) + ".json"), "w"))
+        else:
+            his.append(clean.to_dict())
+            json.dump(his, open(os.path.join(dir, str(file_cnt) + ".json"), "w"))
+    else:
+        os.mkdir(dir)
+        json.dump([clean.to_dict()], open(os.path.join(dir, "1.json"), "w"))
+    return
+
+
 def load_issue(conf):
     dfs = []
     for year in conf.years:
@@ -90,6 +106,7 @@ def filter_conf(conf):
         filenames = os.listdir(dir)
         for filename in filenames:
             for issue in load_issue_from_json(os.path.join(dir, filename)):
+                print(issue.key)
                 total += 1
                 if len(issue.fix_commits) > 1:
                     print("more than 1 fix:", issue.key)
@@ -98,18 +115,46 @@ def filter_conf(conf):
                     for file in fix_commit.files:
                         if ".xml" in file["filename"]:
                             conf_flag = 1
-                            print("fix:", fix_commit.rows["hash"], ", conf file:", file.filename)
-                for buggy_commit in issue.buggy_commits:
-                    for file in buggy_commit.files:
-                        if ".xml" in file["filename"]:
-                            conf_flag = 1
-                            print("buggy: ", buggy_commit.rows["hash"], "conf file:", file.filename)
+                            print("fix:", fix_commit.rows["hash"], "path:", file["new_path"])
+                if conf_flag == 1:
+                    for buggy_commit in issue.buggy_commits:
+                        for file in buggy_commit.files:
+                            if ".xml" in file["filename"]:
+                                print("buggy: ", buggy_commit.rows["hash"], "path:", file["new_path"])
+                # desc = str(issue.summary) + str(issue.description)
+                # if "config" in desc or "setting" in desc or "param" in desc:
+                #     print(issue.key)
+                #     print(issue.summary)
+                #     print(issue.description)
+                #     conf_flag = 1
                 if conf_flag == 1:
                     conf_related += 1
         print(total, conf_related)
 
 
+def load_clean(conf):
+    clean_df = pd.read_csv(os.path.join(conf.data_path, "clean.csv"))
+    for project in conf.projects:
+        repo = conf.proj_repo[project][0]
+        repo_df = clean_df[clean_df["project"] == repo]
+        visit_clean = []
+        print(project, len(repo_df["commit_id"].values))
+        if os.path.exists(os.path.join(conf.data_path, "clean", "visit_cleans.json")):
+            visit_clean = json.load(open(os.path.join(conf.data_path, "clean", "visit_cleans.json"), "r"))
+        for commit in Repository(path_to_repo=os.path.join(conf.repo_path, repo.split("/")[1]),
+                                 only_commits=list(set(repo_df["commit_id"].values) - set(visit_clean))).traverse_commits():
+            print(commit.hash)
+            commit_rows = get_commit_row(commit)
+            commit_files, commits_methods = get_files(commit)
+            clean_commit_obj = Commit(commit.hash, project, commit_files, commits_methods, commit_rows)
+            save_clean(conf, project, clean_commit_obj)
+            visit_clean.append(commit.hash)
+            json.dump(visit_clean, open(os.path.join(conf.data_path, "clean", "visit_cleans.json"), "w"))
+
+
+
 if __name__ == "__main__":
     conf = Conf()
-    load_issue(conf)
+    # load_issue(conf)
+    load_clean(conf)
     filter_conf(conf)

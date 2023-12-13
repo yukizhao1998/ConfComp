@@ -1,5 +1,4 @@
 from commit import Commit
-from conf import Conf
 
 
 class Issue:

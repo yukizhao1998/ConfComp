@@ -1,7 +1,5 @@
 import uuid
 
-from conf import Conf
-
 
 def get_method_code(source_code, start_line, end_line):
     try:

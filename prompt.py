@@ -30,7 +30,7 @@ def path_prompt(change):
     if not change["old_path"]:
         prompt += "The change creates a new file, whose path is " + change["new_path"] + ". "
     elif not change["new_path"]:
-        prompt += "The change deletes a new file, whose path is " + change["new_path"] + ". "
+        prompt += "The change deletes a new file, whose path is " + change["old_path"] + ". "
     elif change["old_path"] == change["new_path"]:
         prompt += "The path of the changed file is " + change["new_path"] + ". "
     elif change["old_path"] != change["new_path"]:

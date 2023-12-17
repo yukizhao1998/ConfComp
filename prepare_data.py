@@ -71,7 +71,8 @@ def collect_config_related_change(project, project_path, conf):
         visited = []
     first = True
     for commit in Repository(path_to_repo=project_path).traverse_commits():
-
+        if commit.hash in visited:
+            continue
         # dt = datetime.datetime(1900, 1, 1, 0, 0, 0).replace(tzinfo=pytz.timezone('UTC'))
         # if commit.author_date < dt:
         #     print("error! date")
@@ -177,11 +178,11 @@ if __name__ == "__main__":
     #                   "By considering the above text, answer the questions: Who am I?",
     #                   "By considering the above text, answer the questions: Where do I work?"]))
     # count commits
-    for project in conf.projects:
-        project_path = os.path.join(conf.repo_path, project)
-        if os.path.exists(project_path):
-            print(project_path)
-            count_project_commits(project, project_path, conf)
+    # for project in conf.projects:
+    #     project_path = os.path.join(conf.repo_path, project)
+    #     if os.path.exists(project_path):
+    #         print(project_path)
+    #         count_project_commits(project, project_path, conf)
     # collect chunks
     if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
         os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
@@ -189,8 +190,8 @@ if __name__ == "__main__":
         project_path = os.path.join(conf.repo_path, project)
         if os.path.exists(project_path):
             print(project_path)
-            # if not project == "rocketmq":
-            #     continue
+            if not project == "rocketmq":
+                continue
             collect_config_related_change(project, project_path, conf)
     # label chunks
     for project in conf.projects:

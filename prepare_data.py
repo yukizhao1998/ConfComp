@@ -190,8 +190,8 @@ if __name__ == "__main__":
         project_path = os.path.join(conf.repo_path, project)
         if os.path.exists(project_path):
             print(project_path)
-            if not project == "rocketmq":
-                continue
+            # if not project == "rocketmq":
+            #     continue
             collect_config_related_change(project, project_path, conf)
     # label chunks
     for project in conf.projects:

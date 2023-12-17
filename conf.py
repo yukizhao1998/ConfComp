@@ -2,7 +2,7 @@ class Conf:
     def __init__(self):
         self.projects = ['dubbo', 'kafka', 'skywalking', 'rocketmq', 'shardingsphere', 'hadoop', 'pulsar', 'druid',
                          'zookeeper', 'dolphinscheduler', 'cassandra', 'shenyu', 'shardingsphere-elasticjob', 'jmeter',
-                         'beam', 'tomcat', 'seatunnel', 'storm']
+                         'beam', 'tomcat', 'seatunnel', 'storm', 'flink', 'doris']
         self.types = ['.java']
         self.data_path = "data/"
         self.repo_path = "repos/"

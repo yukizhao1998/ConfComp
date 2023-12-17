@@ -1,0 +1,68 @@
+Here is the diff of a code change. There are 11 diff chunk(s) in total.
+chunk 1:
+added line(s) [line 38]:
+    public final boolean skipCorrupted;
+chunk 2:
+deleted line(s) [line 66]:
+    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable) throws IOException
+added line(s) [line 67]:
+    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, boolean skipCorrupted) throws IOException
+chunk 3:
+deleted line(s) [line 68]:
+        this(cfs, sstable, new OutputHandler.LogOutput(), false);
+added line(s) [line 69]:
+        this(cfs, sstable, skipCorrupted, new OutputHandler.LogOutput(), false);
+chunk 4:
+deleted line(s) [line 71]:
+    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, OutputHandler outputHandler, boolean isOffline) throws IOException
+added line(s) [line 72]:
+    public Scrubber(ColumnFamilyStore cfs, SSTableReader sstable, boolean skipCorrupted, OutputHandler outputHandler, boolean isOffline) throws IOException
+chunk 5:
+added line(s) [line 77]:
+        this.skipCorrupted = skipCorrupted;
+chunk 6:
+deleted line(s) [line 169]:
+                    outputHandler.debug(String.format("row %s is %s bytes", ByteBufferUtil.bytesToHex(key.key), dataSize));
+added line(s) [line 171-173]:
+                    // avoid an NPE if key is null
+                    String keyName = key == null ? "(unreadable key)" : ByteBufferUtil.bytesToHex(key.key);
+                    outputHandler.debug(String.format("row %s is %s bytes", keyName, dataSize));
+chunk 7:
+deleted line(s) [line 206]:
+                    outputHandler.warn("Non-fatal error reading row (stacktrace follows)", th);
+added line(s) [line 210]:
+                    outputHandler.warn("Error reading row (stacktrace follows):", th);
+chunk 8:
+deleted line(s) [line 234-236]:
+                            // Skipping rows is dangerous for counters (see CASSANDRA-2759)
+                            if (isCommutative)
+                                throw new IOError(th2);
+added line(s) [line 238]:
+                            throwIfCommutative(key, th2);
+chunk 9:
+deleted line(s) [line 246-248]:
+                        // Skipping rows is dangerous for counters (see CASSANDRA-2759)
+                        if (isCommutative)
+                            throw new IOError(th);
+added line(s) [line 248]:
+                        throwIfCommutative(key, th);
+chunk 10:
+deleted line(s) [line 250]:
+                        outputHandler.warn("Row at " + dataStart + " is unreadable; skipping to next");
+added line(s) [line 250]:
+                        outputHandler.warn("Row starting at position " + dataStart + " is unreadable; skipping to next");
+chunk 11:
+added line(s) [line 327-339]:
+    private void throwIfCommutative(DecoratedKey key, Throwable th)
+    {
+        if (isCommutative && !skipCorrupted)
+        {
+            outputHandler.warn(String.format("An error occurred while scrubbing the row with key '%s'.  Skipping corrupt " +
+                                             "rows in counter tables will result in undercounts for the affected " +
+                                             "counters (see CASSANDRA-2759 for more details), so by default the scrub will " +
+                                             "stop at this point.  If you would like to skip the row anyway and continue " +
+                                             "scrubbing, re-run the scrub with the --skip-corrupted option.", key));
+            throw new IOError(th);
+        }
+    }
+How many lines are added and deleted? Summarize the change.

@@ -183,13 +183,13 @@ if __name__ == "__main__":
     # collect chunks
     if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
         os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
-    # for project in conf.projects:
-    #     project_path = os.path.join(conf.repo_path, project)
-    #     if os.path.exists(project_path):
-    #         print(project_path)
-    #         # if not project == "rocketmq":
-    #         #     continue
-    #         collect_config_related_change(project, project_path, conf)
+    for project in conf.projects:
+        project_path = os.path.join(conf.repo_path, project)
+        if os.path.exists(project_path):
+            print(project_path)
+            # if not project == "rocketmq":
+            #     continue
+            collect_config_related_change(project, project_path, conf)
     # label chunks
     for project in conf.projects:
         if not project in ["dubbo", "kafka", "roketmq"]:

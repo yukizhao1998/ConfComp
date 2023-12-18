@@ -109,8 +109,6 @@ def collect_config_related_change(project, project_path, conf):
 def generate_label(project, project_path, conf):
     if os.path.exists(os.path.join(conf.data_path, conf.raw_file_name, project)):
         file_list = os.listdir(os.path.join(conf.data_path, conf.raw_file_name, project))
-        print(os.path.join(conf.data_path, conf.raw_file_name, project))
-        print(file_list)
         if "visited.json" in file_list:
             file_list.remove("visited.json")
     else:

@@ -81,12 +81,15 @@ def collect_config_related_change(project, project_path, conf):
             first = False
             continue
         # if commit.hash != "728c4fa9bf2b2c11dbc61c8e5536b1542abc1ccb":
-        # #if commit.hash != "9c953d1ae260f062f696dad48ed40e68b78af2ba":
+        # if commit.hash != "c8b2110d5e6e8d0913256fb40bb582ce14f34ac7":
         #     continue
         print(commit.hash)
+        # for file in commit.modified_files:
+        #     print(file.source_code)
         commit_chunks = {"code_change_chunks": [], "config_change_chunks": []}
         commit_rows = get_commit_row(commit)
         commit_files, commits_methods = get_files(commit)
+
         for file in commit_files:
             is_config = False
             for suffix in conf.config_file_suffix:

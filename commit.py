@@ -105,23 +105,29 @@ def get_files(commit):
     commit_methods = []
     for file in commit.modified_files:
         file_change_id = uuid.uuid4().fields[-1]
-        file_row = {
-            'file_change_id': file_change_id,  # filename: primary key
-            'hash': commit.hash,                    # hash: foreign key
-            'filename': file.filename,
-            'old_path': file.old_path,
-            'new_path': file.new_path,
-            'change_type': str(file.change_type).split(".")[-1],        # i.e. added, deleted, modified or renamed
-            'diff': file.diff,                      # diff of the file as git presents it (e.g. @@xx.. @@)
-            'diff_parsed': file.diff_parsed,        # diff parsed in a dict containing added and deleted lines lines
-            'num_lines_added': file.added_lines,        # number of lines added
-            'num_lines_deleted': file.deleted_lines,    # number of lines removed
-            'code_after': file.source_code,
-            'code_before': file.source_code_before,
-            'nloc': file.nloc,
-            'complexity': file.complexity,
-            'token_count': file.token_count,
-        }
+        try:
+            file_row = {
+                'file_change_id': file_change_id,  # filename: primary key
+                                  'hash': commit.hash,  # hash: foreign key
+                'filename': file.filename,
+                'old_path': file.old_path,
+                'new_path': file.new_path,
+                'change_type': str(file.change_type).split(".")[-1],  # i.e. added, deleted, modified or renamed
+                'diff': file.diff,  # diff of the file as git presents it (e.g. @@xx.. @@)
+                'diff_parsed': file.diff_parsed,  # diff parsed in a dict containing added and deleted lines lines
+                'num_lines_added': file.added_lines,  # number of lines added
+                'num_lines_deleted': file.deleted_lines,  # number of lines removed
+                'code_after': file.source_code,
+                'code_before': file.source_code_before,
+                'nloc': file.nloc,
+                'complexity': file.complexity,
+                'token_count': file.token_count,
+            }
+        except:
+            print("Exception when collecting files for commit " + commit.hash)
+            continue
+
+
         commit_files.append(file_row)
         file_methods = get_methods(file, file_change_id)
         if file_methods is not None:

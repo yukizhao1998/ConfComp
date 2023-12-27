@@ -8,6 +8,8 @@ import datetime
 import pytz
 from chatgpt_api_utils import *
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 
 def merge_chunk(diff_parsed):
     diff_parsed_clone = {"added": [], "deleted": []}
@@ -71,19 +73,20 @@ def collect_config_related_change(project, project_path, conf):
         visited = []
     first = True
     for commit in Repository(path_to_repo=project_path).traverse_commits():
+        if first:
+            first = False
+            continue
         if commit.hash in visited:
             continue
         # dt = datetime.datetime(1900, 1, 1, 0, 0, 0).replace(tzinfo=pytz.timezone('UTC'))
         # if commit.author_date < dt:
         #     print("error! date")
         # dt = commit.author_date
-        if first:
-            first = False
+        if commit.author_date < conf.dt_start or commit.author_date > conf.dt_end:
             continue
         # if commit.hash != "728c4fa9bf2b2c11dbc61c8e5536b1542abc1ccb":
         # if commit.hash != "c8b2110d5e6e8d0913256fb40bb582ce14f34ac7":
         #     continue
-        print(commit.hash)
         # for file in commit.modified_files:
         #     print(file.source_code)
         commit_chunks = {"code_change_chunks": [], "config_change_chunks": []}
@@ -122,18 +125,20 @@ def generate_label(project, project_path, conf):
         df = pd.DataFrame({"project": [], "commit_hash": [], "code_change_old_path": [], "code_change_new_path": [],
                            "config_change_old_path": [], "config_change_new_path": [], "label": []})
     total_word = 0
-    for file in file_list:
-        commit_hash = file.strip(".json")
-        # if commit_hash != "728c4fa9bf2b2c11dbc61c8e5536b1542abc1ccb":
-        # #if commit_hash != "9c953d1ae260f062f696dad48ed40e68b78af2ba":
-        #     continue
-        commit_chunks = json.load(open(os.path.join(conf.data_path, conf.raw_file_name, project, file), "r"))
+    word_distribute = []
+    for commit in Repository(path_to_repo=project_path).traverse_commits():
+        commit_hash = commit.hash
+        if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json")):
+            continue
+        if commit.author_date < conf.dt_start or commit.author_date > conf.dt_end:
+            continue
+        commit_chunks = json.load(open(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json"), "r"))
         for code_change in commit_chunks["code_change_chunks"]:
             for config_change in commit_chunks["config_change_chunks"]:
                 if len(df[(df["commit_hash"] == commit_hash) & (df["code_change_old_path"] == code_change["old_path"])
-                       & (df["code_change_new_path"] == code_change["new_path"])
-                       & (df["config_change_old_path"] == config_change["old_path"])
-                       & (df["config_change_new_path"] == config_change["new_path"])]) > 0:
+                          & (df["code_change_new_path"] == code_change["new_path"])
+                          & (df["config_change_old_path"] == config_change["old_path"])
+                          & (df["config_change_new_path"] == config_change["new_path"])]) > 0:
                     continue
                 # if code_change["old_path"] and code_change["new_path"] and code_change["old_path"] != code_change["new_path"]:
                 #     sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
@@ -149,8 +154,12 @@ def generate_label(project, project_path, conf):
                     sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
                                        "chunks": [code_change_chunk]}
                     prompt = label_query_prompt(sub_code_change, config_change)
+                    prompt_cnt = 0
                     for subprompt in prompt:
-                        total_word += len(subprompt.split(" "))
+                        prompt_cnt += len(subprompt.split(" "))
+                    if prompt_cnt < 3500:
+                        total_word += prompt_cnt
+                    word_distribute.append(prompt_cnt)
                     # print("*********************************************************")
                     # for subprompt in prompt:
                     #     print(subprompt)
@@ -162,6 +171,16 @@ def generate_label(project, project_path, conf):
                 #            "config_change_new_path": [config_change["new_path"]], "label": [answer]})
                 # df = pd.concat([df, new_row])
                 # df.to_csv(os.path.join(conf.data_path, "label.csv"), index=False)
+
+    # hist, bin_edges = np.histogram(word_distribute)
+    # cdf = np.cumsum(hist)
+    # plt.plot(cdf)
+    print(total_word)
+    word_distribute = sorted(word_distribute)
+    for i in range(10):
+        idx = min(len(word_distribute) - 1, int(len(word_distribute) * 0.1 * (i + 1) - 1))
+        print(0.1 * (i + 1), word_distribute[idx])
+
 
 
 def count_project_commits(project, project_path, conf):
@@ -184,18 +203,18 @@ if __name__ == "__main__":
     #         print(project_path)
     #         count_project_commits(project, project_path, conf)
     # collect chunks
-    if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
-        os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
-    for project in conf.projects:
-        project_path = os.path.join(conf.repo_path, project)
-        if os.path.exists(project_path):
-            print(project_path)
-            # if not project == "rocketmq":
-            #     continue
-            collect_config_related_change(project, project_path, conf)
+    # if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
+    #     os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
+    # for project in conf.projects:
+    #     project_path = os.path.join(conf.repo_path, project)
+    #     if os.path.exists(project_path):
+    #         print(project_path)
+    #         # if not project == "rocketmq":
+    #         #     continue
+    #         collect_config_related_change(project, project_path, conf)
     # label chunks
     for project in conf.projects:
-        if not project in ["dubbo", "kafka", "roketmq"]:
+        if not project in ["kafka", "rocketmq"]:
             continue
         project_path = os.path.join(conf.repo_path, project)
         if os.path.exists(project_path):

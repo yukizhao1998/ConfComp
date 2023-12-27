@@ -214,8 +214,8 @@ if __name__ == "__main__":
     #         collect_config_related_change(project, project_path, conf)
     # label chunks
     for project in conf.projects:
-        if not project in ["kafka", "rocketmq"]:
-            continue
+        # if not project in ["kafka", "rocketmq"]:
+        #     continue
         project_path = os.path.join(conf.repo_path, project)
         if os.path.exists(project_path):
             print(project_path)

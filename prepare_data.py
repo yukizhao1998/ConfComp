@@ -1,15 +1,10 @@
-from conf import Conf
-from config_parser_utils import *
 import os
 from pydriller import Repository
 from commit import *
 from prompt import *
-import datetime
-import pytz
 from chatgpt_api_utils import *
 import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
+
 
 def merge_chunk(diff_parsed):
     diff_parsed_clone = {"added": [], "deleted": []}
@@ -72,18 +67,11 @@ def collect_config_related_change(project, project_path, conf):
     else:
         visited = []
     first = True
-    cnt = 0
     for commit in Repository(path_to_repo=project_path).traverse_commits():
-        # To be deleted
-        if cnt > 1:
-            break
         if first:
             first = False
             continue
         if commit.hash in visited:
-            continue
-        # To be deleted
-        if commit.author_date < conf.dt_start or commit.author_date > conf.dt_end:
             continue
         print(commit.hash)
         commit_chunks = {"code_change_chunks": [], "config_change_chunks": []}
@@ -104,7 +92,6 @@ def collect_config_related_change(project, project_path, conf):
                                                             "chunks": merge_chunk(file["diff_parsed"])})
         if len(commit_chunks["code_change_chunks"]) > 0 and len(commit_chunks["config_change_chunks"]) > 0:
             json.dump(commit_chunks, open(os.path.join(raw_data_dir, commit.hash + ".json"), "w"))
-            cnt += 1
         visited.append(commit.hash)
         json.dump(visited, open(os.path.join(raw_data_dir, "visited.json"), "w"))
 
@@ -212,19 +199,16 @@ if __name__ == "__main__":
     if not os.path.exists(conf.data_path):
         os.mkdir(conf.data_path)
     # collect chunks
-    # if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
-    #     os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
-    # for project in conf.projects:
-    #     project_path = os.path.join(conf.repo_path, project)
-    #     if os.path.exists(project_path):
-    #         print("collecting chunks for " + project_path)
-    #         collect_config_related_change(project, project_path, conf)
+    if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
+        os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
+    for project in conf.projects:
+        project_path = os.path.join(conf.repo_path, project)
+        if os.path.exists(project_path):
+            print("collecting chunks for " + project_path)
+            collect_config_related_change(project, project_path, conf)
     # label_chunks
     for project in conf.projects:
         project_path = os.path.join(conf.repo_path, project)
-        # To be deleted
-        if project == "kafka":
-            continue
         if os.path.exists(project_path):
             print("labeling chunks for " + project_path)
             label_chunks(project, project_path, conf)

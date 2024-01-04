@@ -1,3 +1,5 @@
+import json
+
 def line_prompt(lines):
     if len(lines) == 1:
         return " [line " + str(lines[0][0]) + "]"
@@ -48,12 +50,19 @@ def label_question_prompt():
     #           "similar as the following: \n"
     # prompt += "{\"chunk 1\": 0, \"chunk 3\": 2}\n"
     prompt += "Given the code change and configuration change, which diff chunks of the configuration change " + \
-              "are induced by the code change? "
-    prompt += "Respond in a json format with the chunk as the key and whether the diff chunk is induced by the code " + \
-              "change as value (0: False, 1: True), similar as the following: \n"
-    prompt += "{\"chunk 1\": 0, \"chunk 2\": 0}\n"
+              "are induced by the code change? Let's think step by step."
     return prompt
 
+
+def format_prompt(chunk_cnt):
+    prompt = ""
+    dic = {}
+    for i in range(chunk_cnt):
+        dic["chunk " + str(i + 1)] = 0
+    prompt += "Respond in a json format with the chunk as the key and whether the {} diff chunk(s) is/are induced by the code ".format(chunk_cnt) + \
+              "change as value (0: False, 1: True), similar as the following: \n"
+    prompt += json.dumps(dic)
+    return prompt
 
 def label_query_prompt(code_change, config_change):
     prompt = []

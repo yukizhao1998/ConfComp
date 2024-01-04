@@ -207,8 +207,8 @@ if __name__ == "__main__":
             print("collecting chunks for " + project_path)
             collect_config_related_change(project, project_path, conf)
     # label_chunks
-    for project in conf.projects:
-        project_path = os.path.join(conf.repo_path, project)
-        if os.path.exists(project_path):
-            print("labeling chunks for " + project_path)
-            label_chunks(project, project_path, conf)
+    # for project in conf.projects:
+    #     project_path = os.path.join(conf.repo_path, project)
+    #     if os.path.exists(project_path):
+    #         print("labeling chunks for " + project_path)
+    #         label_chunks(project, project_path, conf)

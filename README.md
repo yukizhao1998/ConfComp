@@ -8,7 +8,7 @@ This is a project for predicting code-change-induced configuration changes.
 
 We use the most popular Apache Java repositories (up to Dec 2023) in our projects. 
 
-Go under `/repos`, and run `sh download_repos.sh` to download repositories.
+Go under `./repos`, and run `sh download_repos.sh` to download repositories.
 
 ## Install dependencies
 
@@ -61,4 +61,4 @@ We collect the responses which are in the json format, and build the labeling da
 
 > project,commit_hash,code_change_old_path,code_change_new_path,config_change_old_path,config_change_new_path,label
 
-There is an example in `exapmle/label.csv`.
+There is an example in `./example/label.csv`.

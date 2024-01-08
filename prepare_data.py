@@ -4,6 +4,8 @@ from commit import *
 from prompt import *
 from chatgpt_api_utils import *
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
+import time
 
 
 def merge_chunk(diff_parsed):
@@ -114,6 +116,26 @@ def merge_result(result, response_json):
     return result
 
 
+def get_gpt_response(prompt, config_change, code_change_old_path, code_change_new_path, config_change_old_path,
+                     config_change_new_path):
+    res = {"code_change_old_path": code_change_old_path, "code_change_new_path": code_change_new_path,
+           "config_change_old_path": config_change_old_path, "config_change_new_path": config_change_new_path,
+           "result": "{}"}
+    try:
+        response = call_chatgpt_api(prompt)
+        messages = list()
+        messages.append({"role": "assistant", "content": response["choices"][0]["message"]["content"]})
+        _, response = call_chatgpt_api_multi(messages, [format_prompt(len(config_change["chunks"]))])
+        res = {"code_change_old_path": code_change_old_path, "code_change_new_path": code_change_new_path,
+                "config_change_old_path": config_change_old_path, "config_change_new_path": config_change_new_path,
+                "result": response["choices"][0]["message"]["content"]}
+        # time.sleep(5)
+    except Exception as e:
+        print(e)
+        print("Exception when getting gpt result: " + json.dumps(code_change_new_path))
+    return res
+
+
 def label_chunks(project, project_path, conf):
     enc = get_label_tokenizer()
     if os.path.exists(os.path.join(conf.data_path, conf.raw_file_name, project)):
@@ -127,10 +149,10 @@ def label_chunks(project, project_path, conf):
     else:
         df = pd.DataFrame({"project": [], "commit_hash": [], "code_change_old_path": [], "code_change_new_path": [],
                            "config_change_old_path": [], "config_change_new_path": [], "label": []})
-    total_token_cnt = 0
-    prompt_cnt = 0
+    # total_token_cnt = 0
+    # prompt_cnt = 0
     commit_cnt = 0
-    word_distribute = []
+    # word_distribute = []
     for commit in Repository(path_to_repo=project_path).traverse_commits():
         commit_hash = commit.hash
         if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json")):
@@ -139,52 +161,73 @@ def label_chunks(project, project_path, conf):
             continue
         commit_cnt += 1
         commit_chunks = json.load(open(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json"), "r"))
-        print_cnt = 0
-        for code_change in commit_chunks["code_change_chunks"]:
-            for config_change in commit_chunks["config_change_chunks"]:
-                if len(df[(df["commit_hash"] == commit_hash) & (df["code_change_old_path"] == str(code_change["old_path"]))
-                          & (df["code_change_new_path"] == str(code_change["new_path"]))
-                          & (df["config_change_old_path"] == str(config_change["old_path"]))
-                          & (df["config_change_new_path"] == str(config_change["new_path"]))]) > 0:
-                    continue
-                result = {}
-                for i in range(len(config_change["chunks"])):
-                    result["chunk " + str(i + 1)] = 0
-                sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
-                                   "chunks": []}
-                for i, code_change_chunk in enumerate(code_change["chunks"]):
-                    # if all the chunks of the config is labeled as related, break
-                    flag = True
-                    for key in result:
-                        if result[key] == 0:
-                            flag = False
-                    if flag:
-                        break
-                    sub_code_change["chunks"].append(code_change_chunk)
-                    prompt = label_query_prompt(sub_code_change, config_change)
-                    token_cnt = len(enc.encode("\n".join(prompt)))
-                    if len(sub_code_change["chunks"]) > 3 or token_cnt > 1000 or i == len(code_change["chunks"]) - 1:
-                        response = call_chatgpt_api(prompt)
-                        messages = list()
-                        messages.append({"role": "assistant", "content": response["choices"][0]["message"]["content"]})
-                        _, response = call_chatgpt_api_multi(messages, [format_prompt(len(config_change["chunks"]))])
-                        result = merge_result(result, response["choices"][0]["message"]["content"])
-                        total_token_cnt += token_cnt
-                        prompt_cnt += 1
-                        word_distribute.append(token_cnt)
-                        sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
-                                           "chunks": []}
-                df.loc[len(df)] = [project, commit_hash, str(code_change["old_path"]), str(code_change["new_path"]), str(config_change["old_path"]),
-                                   str(config_change["new_path"]), json.dumps(result)]
+        # print_cnt = 0
+        total_res = []
+        with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+            futures = []
+            for code_change in commit_chunks["code_change_chunks"]:
+                for config_change in commit_chunks["config_change_chunks"]:
+                    if len(df[(df["commit_hash"] == commit_hash) & (df["code_change_old_path"] == str(code_change["old_path"]))
+                              & (df["code_change_new_path"] == str(code_change["new_path"]))
+                              & (df["config_change_old_path"] == str(config_change["old_path"]))
+                              & (df["config_change_new_path"] == str(config_change["new_path"]))]) > 0:
+                        continue
+
+                    total_res.append({"code_change_old_path": str(code_change["old_path"]),
+                                      "code_change_new_path": str(code_change["new_path"]),
+                                      "config_change_old_path": str(config_change["old_path"]),
+                                      "config_change_new_path": str(config_change["new_path"]),
+                                      "result": {}})
+                    for i in range(len(config_change["chunks"])):
+                        total_res[-1]["result"]["chunk " + str(i + 1)] = 0
+                    sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
+                                       "chunks": []}
+                    for i, code_change_chunk in enumerate(code_change["chunks"]):
+                        # if all the chunks of the config is labeled as related, break
+                        # flag = True
+                        # for key in result:
+                        #     if result[key] == 0:
+                        #         flag = False
+                        # if flag:
+                        #     break
+                        sub_code_change["chunks"].append(code_change_chunk)
+                        prompt = label_query_prompt(sub_code_change, config_change)
+                        token_cnt = len(enc.encode("\n".join(prompt)))
+                        if len(sub_code_change["chunks"]) > 3 or token_cnt > 1000 or i == len(code_change["chunks"]) - 1:
+                            futures.append(executor.submit(get_gpt_response, prompt, config_change, str(code_change["old_path"]),
+                                                             str(code_change["new_path"]), str(config_change["old_path"]),
+                                                             str(config_change["new_path"])))
+
+                            # result = merge_result(result, response["choices"][0]["message"]["content"])
+                            # total_token_cnt += token_cnt
+                            # prompt_cnt += 1
+                            # word_distribute.append(token_cnt)
+                            sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
+                                               "chunks": []}
+            if len(futures) > 0:
+                print(commit_hash)
+            wait(futures, return_when=ALL_COMPLETED)
+            for future in futures:
+                res = future.result()
+                for idx, ele in enumerate(total_res):
+                    if ele["code_change_old_path"] == res["code_change_old_path"] and \
+                            ele["code_change_new_path"] == res["code_change_new_path"] and \
+                            ele["config_change_old_path"] == res["config_change_old_path"] and \
+                            ele["config_change_new_path"] == res["config_change_new_path"]:
+                        ele["result"] = merge_result(ele["result"], res["result"])
+                        total_res[idx] = ele
+            for line in total_res:
+                df.loc[len(df)] = [project, commit_hash, line["code_change_old_path"], line["code_change_new_path"],
+                                   line["config_change_old_path"], line["config_change_new_path"], json.dumps(line["result"])]
                 df.to_csv(os.path.join(conf.data_path, "label.csv"), index=False)
-    print("Summary for " + project)
-    print("total commit:", commit_cnt)
-    print("total prompt:", prompt_cnt)
-    print("total token:", total_token_cnt)
-    word_distribute = sorted(word_distribute)
-    for i in range(10):
-        idx = min(len(word_distribute) - 1, int(len(word_distribute) * 0.1 * (i + 1) - 1))
-        print(0.1 * (i + 1), word_distribute[idx])
+    # print("Summary for " + project)
+    # print("total commit:", commit_cnt)
+    # print("total prompt:", prompt_cnt)
+    # print("total token:", total_token_cnt)
+    # word_distribute = sorted(word_distribute)
+    # for i in range(10):
+    #     idx = min(len(word_distribute) - 1, int(len(word_distribute) * 0.1 * (i + 1) - 1))
+    #     print(0.1 * (i + 1), word_distribute[idx])
 
 
 def count_project_commits(project, project_path, conf):
@@ -207,8 +250,8 @@ if __name__ == "__main__":
             print("collecting chunks for " + project_path)
             collect_config_related_change(project, project_path, conf)
     # label_chunks
-    # for project in conf.projects:
-    #     project_path = os.path.join(conf.repo_path, project)
-    #     if os.path.exists(project_path):
-    #         print("labeling chunks for " + project_path)
-    #         label_chunks(project, project_path, conf)
+    for project in conf.projects:
+        project_path = os.path.join(conf.repo_path, project)
+        if os.path.exists(project_path):
+            print("labeling chunks for " + project_path)
+            label_chunks(project, project_path, conf)

@@ -4,10 +4,9 @@ from commit import *
 from prompt import *
 from chatgpt_api_utils import *
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 
 
 def merge_chunk(diff_parsed):

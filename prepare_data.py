@@ -151,6 +151,9 @@ def get_file_cnt_bar(project_path, conf):
         config_file_cnt.append(len(commit_chunks["config_change_chunks"]))
     code_file_cnt.sort()
     config_file_cnt.sort()
+    for i in range(1, 11):
+        print("i", i * 0.1)
+        print("code", code_file_cnt[int(len(code_file_cnt) * i * 0.1) - 1])
     return code_file_cnt[int(len(code_file_cnt) * conf.file_cnt_bar_prop) - 1], config_file_cnt[int(len(config_file_cnt) * conf.file_cnt_bar_prop) - 1]
 
 
@@ -251,17 +254,20 @@ if __name__ == "__main__":
     conf = Conf()
     if not os.path.exists(conf.data_path):
         os.mkdir(conf.data_path)
-    # collect chunks
-    if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
-        os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
+    # # collect chunks
+    # if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
+    #     os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
+    # for project in conf.projects:
+    #     project_path = os.path.join(conf.repo_path, project)
+    #     if os.path.exists(project_path):
+    #         print("collecting chunks for " + project_path)
+    #         collect_config_related_change(project, project_path, conf)
+    # # label_chunks
+    # for project in conf.projects:
+    #     project_path = os.path.join(conf.repo_path, project)
+    #     if os.path.exists(project_path):
+    #         print("labeling chunks for " + project_path)
+    #         label_chunks(project, project_path, conf)
     for project in conf.projects:
         project_path = os.path.join(conf.repo_path, project)
-        if os.path.exists(project_path):
-            print("collecting chunks for " + project_path)
-            collect_config_related_change(project, project_path, conf)
-    # label_chunks
-    for project in conf.projects:
-        project_path = os.path.join(conf.repo_path, project)
-        if os.path.exists(project_path):
-            print("labeling chunks for " + project_path)
-            label_chunks(project, project_path, conf)
+        get_file_cnt_bar(project_path, conf)

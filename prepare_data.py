@@ -179,7 +179,7 @@ def label_chunks(project, project_path, conf):
             continue
         commit_cnt_before += 1
         commit_chunks = json.load(open(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json"), "r"))
-        if len(commit_chunks["code_change_chunks"]) > code_file_bar or len(commit_chunks["config_change_chunks"]) > config_file_bar:
+        if len(commit_chunks["code_change_chunks"]) > code_file_bar:
             continue
         commit_cnt += 1
         total_res = []

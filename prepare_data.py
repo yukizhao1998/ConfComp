@@ -4,8 +4,10 @@ from commit import *
 from prompt import *
 from chatgpt_api_utils import *
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED, as_completed
 import time
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 
 def merge_chunk(diff_parsed):
@@ -136,6 +138,23 @@ def get_gpt_response(prompt, config_change, code_change_old_path, code_change_ne
     return res
 
 
+def get_file_cnt_bar(project_path, conf):
+    code_file_cnt = []
+    config_file_cnt = []
+    for commit in Repository(path_to_repo=project_path).traverse_commits():
+        commit_hash = commit.hash
+        if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json")):
+            continue
+        if commit.author_date < conf.dt_start or commit.author_date > conf.dt_end:
+            continue
+        commit_chunks = json.load(open(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json"), "r"))
+        code_file_cnt.append(len(commit_chunks["code_change_chunks"]))
+        config_file_cnt.append(len(commit_chunks["config_change_chunks"]))
+    code_file_cnt.sort()
+    config_file_cnt.sort()
+    return code_file_cnt[int(len(code_file_cnt) * conf.file_cnt_bar_prop) - 1], config_file_cnt[int(len(config_file_cnt) * conf.file_cnt_bar_prop) - 1]
+
+
 def label_chunks(project, project_path, conf):
     enc = get_label_tokenizer()
     if os.path.exists(os.path.join(conf.data_path, conf.raw_file_name, project)):
@@ -149,19 +168,21 @@ def label_chunks(project, project_path, conf):
     else:
         df = pd.DataFrame({"project": [], "commit_hash": [], "code_change_old_path": [], "code_change_new_path": [],
                            "config_change_old_path": [], "config_change_new_path": [], "label": []})
-    # total_token_cnt = 0
-    # prompt_cnt = 0
     commit_cnt = 0
-    # word_distribute = []
+    commit_cnt_before = 0
+    code_file_bar, config_file_bar = get_file_cnt_bar(project_path, conf)
+    print("bar", code_file_bar, config_file_bar)
     for commit in Repository(path_to_repo=project_path).traverse_commits():
         commit_hash = commit.hash
         if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json")):
             continue
         if commit.author_date < conf.dt_start or commit.author_date > conf.dt_end:
             continue
-        commit_cnt += 1
+        commit_cnt_before += 1
         commit_chunks = json.load(open(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json"), "r"))
-        # print_cnt = 0
+        if len(commit_chunks["code_change_chunks"]) > code_file_bar or len(commit_chunks["config_change_chunks"]) > config_file_bar:
+            continue
+        commit_cnt += 1
         total_res = []
         with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
             futures = []
@@ -183,13 +204,6 @@ def label_chunks(project, project_path, conf):
                     sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
                                        "chunks": []}
                     for i, code_change_chunk in enumerate(code_change["chunks"]):
-                        # if all the chunks of the config is labeled as related, break
-                        # flag = True
-                        # for key in result:
-                        #     if result[key] == 0:
-                        #         flag = False
-                        # if flag:
-                        #     break
                         sub_code_change["chunks"].append(code_change_chunk)
                         prompt = label_query_prompt(sub_code_change, config_change)
                         token_cnt = len(enc.encode("\n".join(prompt)))
@@ -197,17 +211,13 @@ def label_chunks(project, project_path, conf):
                             futures.append(executor.submit(get_gpt_response, prompt, config_change, str(code_change["old_path"]),
                                                              str(code_change["new_path"]), str(config_change["old_path"]),
                                                              str(config_change["new_path"])))
-
-                            # result = merge_result(result, response["choices"][0]["message"]["content"])
-                            # total_token_cnt += token_cnt
-                            # prompt_cnt += 1
-                            # word_distribute.append(token_cnt)
                             sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
                                                "chunks": []}
             if len(futures) > 0:
                 print(commit_hash)
-            wait(futures, return_when=ALL_COMPLETED)
-            for future in futures:
+            # wait(futures, return_when=ALL_COMPLETED)
+            # for future in futures:
+            for future in tqdm(as_completed(futures), total=len(futures)):
                 res = future.result()
                 for idx, ele in enumerate(total_res):
                     if ele["code_change_old_path"] == res["code_change_old_path"] and \
@@ -221,6 +231,7 @@ def label_chunks(project, project_path, conf):
                                    line["config_change_old_path"], line["config_change_new_path"], json.dumps(line["result"])]
                 df.to_csv(os.path.join(conf.data_path, "label.csv"), index=False)
     # print("Summary for " + project)
+    # print(commit_cnt_before, commit_cnt)
     # print("total commit:", commit_cnt)
     # print("total prompt:", prompt_cnt)
     # print("total token:", total_token_cnt)
@@ -251,6 +262,8 @@ if __name__ == "__main__":
             collect_config_related_change(project, project_path, conf)
     # label_chunks
     for project in conf.projects:
+        if project != "dubbo":
+            continue
         project_path = os.path.join(conf.repo_path, project)
         if os.path.exists(project_path):
             print("labeling chunks for " + project_path)

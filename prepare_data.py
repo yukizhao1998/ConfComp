@@ -262,8 +262,6 @@ if __name__ == "__main__":
             collect_config_related_change(project, project_path, conf)
     # label_chunks
     for project in conf.projects:
-        if project != "dubbo":
-            continue
         project_path = os.path.join(conf.repo_path, project)
         if os.path.exists(project_path):
             print("labeling chunks for " + project_path)

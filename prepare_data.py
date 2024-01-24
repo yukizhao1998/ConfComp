@@ -183,8 +183,8 @@ def label_chunks(project, project_path, conf):
                            "config_change_old_path": [], "config_change_new_path": [], "label": []})
     commit_cnt = 0
     commit_cnt_before = 0
-    code_file_bar, config_file_bar = get_file_cnt_bar(project_path, conf)
-    print("bar", code_file_bar, config_file_bar)
+    # code_file_bar, config_file_bar = get_file_cnt_bar(project_path, conf)
+    # print("bar", code_file_bar, config_file_bar)
     for commit in Repository(path_to_repo=project_path).traverse_commits():
         commit_hash = commit.hash
         if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json")):
@@ -197,56 +197,56 @@ def label_chunks(project, project_path, conf):
             continue
         commit_cnt += 1
         total_res = []
-        # with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
-        #     futures = []
-        #     for code_change in commit_chunks["code_change_chunks"]:
-        #         for config_change in commit_chunks["config_change_chunks"]:
-        #             # code_chunk_cnt, code_modify_tokens = get_modify_size(code_change)
-        #             # print(code_chunk_cnt, code_modify_tokens)
-        #             if len(df[(df["commit_hash"] == commit_hash) & (df["code_change_old_path"] == str(code_change["old_path"]))
-        #                       & (df["code_change_new_path"] == str(code_change["new_path"]))
-        #                       & (df["config_change_old_path"] == str(config_change["old_path"]))
-        #                       & (df["config_change_new_path"] == str(config_change["new_path"]))]) > 0:
-        #                 continue
-        #
-        #             total_res.append({"code_change_old_path": str(code_change["old_path"]),
-        #                               "code_change_new_path": str(code_change["new_path"]),
-        #                               "config_change_old_path": str(config_change["old_path"]),
-        #                               "config_change_new_path": str(config_change["new_path"]),
-        #                               "result": {}})
-        #             for i in range(len(config_change["chunks"])):
-        #                 total_res[-1]["result"]["chunk " + str(i + 1)] = 0
-        #             sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
-        #                                "chunks": []}
-        #             for i, code_change_chunk in enumerate(code_change["chunks"]):
-        #                 sub_code_change["chunks"].append(code_change_chunk)
-        #                 prompt = label_query_prompt(sub_code_change, config_change)
-        #                 token_cnt = len(enc.encode("\n".join(prompt)))
-        #                 if len(sub_code_change["chunks"]) > 3 or token_cnt > 1000 or i == len(code_change["chunks"]) - 1:
-        #                     futures.append(executor.submit(get_gpt_response, prompt, config_change, str(code_change["old_path"]),
-        #                                                      str(code_change["new_path"]), str(config_change["old_path"]),
-        #                                                      str(config_change["new_path"])))
-        #                     sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
-        #                                        "chunks": []}
-        #     if len(futures) > 0:
-        #         print(commit_hash)
-        #     # wait(futures, return_when=ALL_COMPLETED)
-        #     # for future in futures:
-        #     for future in tqdm(as_completed(futures), total=len(futures)):
-        #         res = future.result()
-        #         for idx, ele in enumerate(total_res):
-        #             if ele["code_change_old_path"] == res["code_change_old_path"] and \
-        #                     ele["code_change_new_path"] == res["code_change_new_path"] and \
-        #                     ele["config_change_old_path"] == res["config_change_old_path"] and \
-        #                     ele["config_change_new_path"] == res["config_change_new_path"]:
-        #                 ele["result"] = merge_result(ele["result"], res["result"])
-        #                 total_res[idx] = ele
-        #     for line in total_res:
-        #         df.loc[len(df)] = [project, commit_hash, line["code_change_old_path"], line["code_change_new_path"],
-        #                            line["config_change_old_path"], line["config_change_new_path"], json.dumps(line["result"])]
-        #         df.to_csv(os.path.join(conf.data_path, "label.csv"), index=False)
+        with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+            futures = []
+            for code_change in commit_chunks["code_change_chunks"]:
+                for config_change in commit_chunks["config_change_chunks"]:
+                    # code_chunk_cnt, code_modify_tokens = get_modify_size(code_change)
+                    # print(code_chunk_cnt, code_modify_tokens)
+                    if len(df[(df["commit_hash"] == commit_hash) & (df["code_change_old_path"] == str(code_change["old_path"]))
+                              & (df["code_change_new_path"] == str(code_change["new_path"]))
+                              & (df["config_change_old_path"] == str(config_change["old_path"]))
+                              & (df["config_change_new_path"] == str(config_change["new_path"]))]) > 0:
+                        continue
+
+                    total_res.append({"code_change_old_path": str(code_change["old_path"]),
+                                      "code_change_new_path": str(code_change["new_path"]),
+                                      "config_change_old_path": str(config_change["old_path"]),
+                                      "config_change_new_path": str(config_change["new_path"]),
+                                      "result": {}})
+                    for i in range(len(config_change["chunks"])):
+                        total_res[-1]["result"]["chunk " + str(i + 1)] = 0
+                    sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
+                                       "chunks": []}
+                    for i, code_change_chunk in enumerate(code_change["chunks"]):
+                        sub_code_change["chunks"].append(code_change_chunk)
+                        prompt = label_query_prompt(sub_code_change, config_change)
+                        token_cnt = len(enc.encode("\n".join(prompt)))
+                        if len(sub_code_change["chunks"]) > 3 or token_cnt > 1000 or i == len(code_change["chunks"]) - 1:
+                            futures.append(executor.submit(get_gpt_response, prompt, config_change, str(code_change["old_path"]),
+                                                             str(code_change["new_path"]), str(config_change["old_path"]),
+                                                             str(config_change["new_path"])))
+                            sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
+                                               "chunks": []}
+            if len(futures) > 0:
+                print(commit_hash)
+            # wait(futures, return_when=ALL_COMPLETED)
+            # for future in futures:
+            for future in tqdm(as_completed(futures), total=len(futures)):
+                res = future.result()
+                for idx, ele in enumerate(total_res):
+                    if ele["code_change_old_path"] == res["code_change_old_path"] and \
+                            ele["code_change_new_path"] == res["code_change_new_path"] and \
+                            ele["config_change_old_path"] == res["config_change_old_path"] and \
+                            ele["config_change_new_path"] == res["config_change_new_path"]:
+                        ele["result"] = merge_result(ele["result"], res["result"])
+                        total_res[idx] = ele
+            for line in total_res:
+                df.loc[len(df)] = [project, commit_hash, line["code_change_old_path"], line["code_change_new_path"],
+                                   line["config_change_old_path"], line["config_change_new_path"], json.dumps(line["result"])]
+                df.to_csv(os.path.join(conf.data_path, "label.csv"), index=False)
     # print("Summary for " + project)
-    print(commit_cnt_before, commit_cnt, commit_cnt / commit_cnt_before)
+    # print(commit_cnt_before, commit_cnt, commit_cnt / commit_cnt_before)
     # print("total commit:", commit_cnt)
     # print("total prompt:", prompt_cnt)
     # print("total token:", total_token_cnt)
@@ -267,20 +267,17 @@ if __name__ == "__main__":
     conf = Conf()
     if not os.path.exists(conf.data_path):
         os.mkdir(conf.data_path)
-    # # collect chunks
-    # if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
-    #     os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
-    # for project in conf.projects:
-    #     project_path = os.path.join(conf.repo_path, project)
-    #     if os.path.exists(project_path):
-    #         print("collecting chunks for " + project_path)
-    #         collect_config_related_change(project, project_path, conf)
+    # collect chunks
+    if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
+        os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
+    for project in conf.projects:
+        project_path = os.path.join(conf.repo_path, project)
+        if os.path.exists(project_path):
+            print("collecting chunks for " + project_path)
+            collect_config_related_change(project, project_path, conf)
     # label_chunks
     for project in conf.projects:
         project_path = os.path.join(conf.repo_path, project)
         if os.path.exists(project_path):
             print("labeling chunks for " + project_path)
             label_chunks(project, project_path, conf)
-    # for project in conf.projects:
-    #     project_path = os.path.join(conf.repo_path, project)
-    #     get_file_cnt_bar(project_path, conf)

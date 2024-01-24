@@ -18,3 +18,4 @@ class Conf:
         self.dt_start = datetime.datetime(2022, 2, 1, 0, 0, 0).replace(tzinfo=pytz.timezone('UTC'))
         self.dt_end = datetime.datetime(2024, 1, 1, 0, 0, 0).replace(tzinfo=pytz.timezone('UTC'))
         self.file_cnt_bar_prop = 0.85
+        self.code_file_cnt_bar = 15

@@ -51,7 +51,7 @@ def is_config_file(modified_file, conf):
     return flag
 
 
-def get_conf_embedding(index, project, content, relpath, namespace, info):
+def get_conf_embedding(index, project, content, relpath, namespace, info, conf):
     id = get_hash_sha256(relpath) + "_" + get_hash_sha256(content)
     if os.path.exists(os.path.join(conf.data_path, "db_content", project, info, id + ".json")):
         rec = json.load(open(os.path.join(conf.data_path, "db_content", project, info, id + ".json"), "r"))
@@ -66,7 +66,7 @@ def get_conf_embedding(index, project, content, relpath, namespace, info):
             print("Error: exceed token limit for " + relpath)
             return None
         else:
-            embedding = get_embedding(content)['data'][0]['embedding']
+            embedding = get_embedding(content, conf)['data'][0]['embedding']
             return [{"id": id, "values": embedding, "metadata": {"path": relpath}}]
 
 
@@ -143,11 +143,11 @@ def example(conf):
     content = ["Argentina wins the 2022 World Cup.", "Brazil is the most frequent winner of the World Cup."]
     # generate vector and update vector db
     for i, line in enumerate(content):
-        data_embedding_res = get_embedding(line)
+        data_embedding_res = get_embedding(line, conf)
         upsert_resp = index.upsert(vectors=[("vec_" + str(i), data_embedding_res["data"][0]["embedding"], {"data": line})])
         print(upsert_resp)
     # generate prompt vector
-    prompt_embedding = get_embedding(prompt)['data'][0]['embedding']
+    prompt_embedding = get_embedding(prompt, conf)['data'][0]['embedding']
     # query vector db
     related_vec = index.query(vector=prompt_embedding, top_k=1, include_metadata=True)
     # build prompt with new info
@@ -229,7 +229,7 @@ def build_commit_conf_db(project, project_path, last_commit, commit_list, conf, 
                     content = modified_file.source_code
                     relpath = Path(modified_file.new_path).as_posix()
                 if content:
-                    futures.append(executor.submit(get_conf_embedding, index, project, content, relpath, commit[:10], info))
+                    futures.append(executor.submit(get_conf_embedding, index, project, content, relpath, commit[:10], info, conf))
         ids = []
         # upsert updated files to db
         for future in as_completed(futures):
@@ -281,13 +281,13 @@ if __name__ == "__main__":
     label_csv = pd.read_csv(label_path)
     # example(conf)
     for project in conf.projects:
-        # if project != "dubbo":
-        #     continue
-        # project_path = os.path.join(conf.repo_path, project)
-        # last_commit = get_last_commit(project_path)
-        # build_init_conf_db(project, project_path, last_commit, conf, "test")
-        # print(len(list(set(label_csv[label_csv["project"] == project]["commit_hash"]))))
-        # commit_list = sort_parent_commit_by_date(list(set(label_csv[label_csv["project"] == project]["commit_hash"])), project_path, project, "test")
-        # build_commit_conf_db(project, project_path, last_commit, commit_list, conf, "test")
+        if project != "dubbo":
+            continue
+        project_path = os.path.join(conf.repo_path, project)
+        last_commit = get_last_commit(project_path)
+        build_init_conf_db(project, project_path, last_commit, conf, "test")
+        print(len(list(set(label_csv[label_csv["project"] == project]["commit_hash"]))))
+        commit_list = sort_parent_commit_by_date(list(set(label_csv[label_csv["project"] == project]["commit_hash"])), project_path, project, "test")
+        build_commit_conf_db(project, project_path, last_commit, commit_list, conf, "test")
         commit_list = list(set(label_csv[label_csv["project"] == project]["commit_hash"]))
         print(project, len(commit_list))

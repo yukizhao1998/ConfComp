@@ -5,8 +5,8 @@ import tiktoken
 import time
 
 
-def call_chatgpt_api(messages, model=Conf().label_model):
-    conf = Conf()
+def call_chatgpt_api(messages, conf):
+    model = conf.label_model
     messages = list(map(lambda chunk: {
         "role": "user",
         "content": chunk
@@ -21,8 +21,7 @@ def call_chatgpt_api(messages, model=Conf().label_model):
     return response
 
 
-def call_chatgpt_api_multi(history, message_text):
-    conf = Conf()
+def call_chatgpt_api_multi(history, message_text, conf):
     for text in message_text:
         history.append({"role": "user", "content": text})
     messages = history
@@ -35,10 +34,9 @@ def call_chatgpt_api_multi(history, message_text):
     return messages, response
 
 
-def get_embedding(content):
+def get_embedding(content, conf):
     while True:
         try:
-            conf = Conf()
             openai.api_key = conf.openai_api_key
             response = openai.Embedding.create(
             model=conf.openai_embedding_model,

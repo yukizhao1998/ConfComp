@@ -119,15 +119,15 @@ def merge_result(result, response_json):
 
 
 def get_gpt_response(prompt, config_change, code_change_old_path, code_change_new_path, config_change_old_path,
-                     config_change_new_path):
+                     config_change_new_path, conf):
     res = {"code_change_old_path": code_change_old_path, "code_change_new_path": code_change_new_path,
            "config_change_old_path": config_change_old_path, "config_change_new_path": config_change_new_path,
            "result": "{}"}
     try:
-        response = call_chatgpt_api(prompt)
+        response = call_chatgpt_api(prompt, conf)
         messages = list()
         messages.append({"role": "assistant", "content": response["choices"][0]["message"]["content"]})
-        _, response = call_chatgpt_api_multi(messages, [format_prompt(len(config_change["chunks"]))])
+        _, response = call_chatgpt_api_multi(messages, [format_prompt(len(config_change["chunks"]))], conf)
         res = {"code_change_old_path": code_change_old_path, "code_change_new_path": code_change_new_path,
                 "config_change_old_path": config_change_old_path, "config_change_new_path": config_change_new_path,
                 "result": response["choices"][0]["message"]["content"]}
@@ -237,7 +237,7 @@ def label_chunks(project, project_path, conf):
                         if len(sub_code_change["chunks"]) > 3 or token_cnt > 1000 or i == len(code_change["chunks"]) - 1:
                             futures.append(executor.submit(get_gpt_response, prompt, config_change, str(code_change["old_path"]),
                                                              str(code_change["new_path"]), str(config_change["old_path"]),
-                                                             str(config_change["new_path"])))
+                                                             str(config_change["new_path"]), conf))
                             sub_code_change = {"old_path": code_change["old_path"], "new_path": code_change["new_path"],
                                                "chunks": []}
             if len(futures) > 0:
@@ -284,7 +284,7 @@ if __name__ == "__main__":
 
     conf = Conf()
     conf.openai_api_key = args.openai_api_key
-    print(conf.openai_api_key)
+
     if not os.path.exists(conf.data_path):
         os.mkdir(conf.data_path)
     for project in conf.projects:
@@ -298,10 +298,10 @@ if __name__ == "__main__":
         if os.path.exists(project_path):
             print("collecting chunks for " + project_path)
             collect_config_related_change(project, project_path, conf)
-
-    # label_chunks
-    for project in conf.projects:
-        project_path = os.path.join(conf.repo_path, project)
-        if os.path.exists(project_path):
-            print("labeling chunks for " + project_path)
-            label_chunks(project, project_path, conf)
+    #
+    # # label_chunks
+    # for project in conf.projects:
+    #     project_path = os.path.join(conf.repo_path, project)
+    #     if os.path.exists(project_path):
+    #         print("labeling chunks for " + project_path)
+    #         label_chunks(project, project_path, conf)

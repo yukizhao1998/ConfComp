@@ -7,6 +7,7 @@ import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 from tqdm import tqdm
+import argparse
 
 
 def merge_chunk(diff_parsed):
@@ -168,6 +169,15 @@ def get_file_cnt_bar(project_path, conf):
     return code_file_cnt[int(len(code_file_cnt) * conf.file_cnt_bar_prop) - 1], config_file_cnt[int(len(config_file_cnt) * conf.file_cnt_bar_prop) - 1]
 
 
+def exist_config_file(commit_chunks, conf):
+    for chunk in commit_chunks["config_change_chunks"]:
+        for suffix in conf.config_file_suffix:
+            if (chunk["old_path"] and chunk["old_path"].endswith(suffix)) or (chunk["new_path"] and chunk["new_path"].endswith(suffix)):
+                return True
+    return False
+
+
+
 def label_chunks(project, project_path, conf):
     enc = get_label_tokenizer()
     if os.path.exists(os.path.join(conf.data_path, conf.raw_file_name, project)):
@@ -191,8 +201,10 @@ def label_chunks(project, project_path, conf):
             continue
         if commit.author_date < conf.dt_start or commit.author_date > conf.dt_end:
             continue
-        commit_cnt_before += 1
         commit_chunks = json.load(open(os.path.join(conf.data_path, conf.raw_file_name, project, commit_hash + ".json"), "r"))
+        if not exist_config_file(commit_chunks, conf):
+            continue
+        commit_cnt_before += 1
         if len(commit_chunks["code_change_chunks"]) > conf.code_file_cnt_bar:
             continue
         commit_cnt += 1
@@ -246,7 +258,7 @@ def label_chunks(project, project_path, conf):
                                    line["config_change_old_path"], line["config_change_new_path"], json.dumps(line["result"])]
                 df.to_csv(os.path.join(conf.data_path, "label.csv"), index=False)
     # print("Summary for " + project)
-    # print(commit_cnt_before, commit_cnt, commit_cnt / commit_cnt_before)
+    print(commit_cnt_before, commit_cnt, commit_cnt / commit_cnt_before)
     # print("total commit:", commit_cnt)
     # print("total prompt:", prompt_cnt)
     # print("total token:", total_token_cnt)
@@ -259,14 +271,25 @@ def label_chunks(project, project_path, conf):
 def count_project_commits(project, project_path, conf):
     cnt = 0
     for commit in Repository(path_to_repo=project_path).traverse_commits():
+        if commit.author_date < conf.dt_start or commit.author_date > conf.dt_end:
+            continue
         cnt += 1
-    print(cnt)
+    print(project, cnt)
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--openai_api_key", "-o", help="openai_api_key")
+    args = parser.parse_args()
+
     conf = Conf()
+    conf.openai_api_key = args.openai_api_key
+    print(conf.openai_api_key)
     if not os.path.exists(conf.data_path):
         os.mkdir(conf.data_path)
+    for project in conf.projects:
+        project_path = os.path.join(conf.repo_path, project)
+        count_project_commits(project, project_path, conf)
     # collect chunks
     if not os.path.exists(os.path.join(conf.data_path, conf.raw_file_name)):
         os.mkdir(os.path.join(conf.data_path, conf.raw_file_name))
@@ -275,6 +298,7 @@ if __name__ == "__main__":
         if os.path.exists(project_path):
             print("collecting chunks for " + project_path)
             collect_config_related_change(project, project_path, conf)
+
     # label_chunks
     for project in conf.projects:
         project_path = os.path.join(conf.repo_path, project)

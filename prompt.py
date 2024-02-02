@@ -64,6 +64,7 @@ def format_prompt(chunk_cnt):
     prompt += json.dumps(dic)
     return prompt
 
+
 def label_query_prompt(code_change, config_change):
     prompt = []
     code_change_prompt = ""
@@ -79,3 +80,10 @@ def label_query_prompt(code_change, config_change):
     prompt.append(label_question_prompt())
     return prompt
 
+
+def query_config_file_prompt(code_change):
+    prompt = "Here is the diff of a code change. "
+    prompt += path_prompt(code_change)
+    prompt += chunk_prompt(code_change["chunks"])
+    prompt += "Which configuration file should be changed after the code change?"
+    return prompt

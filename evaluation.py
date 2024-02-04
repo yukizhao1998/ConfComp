@@ -13,7 +13,7 @@ from pydriller import Repository
 from pathlib import Path
 
 
-def eval_file_recall(sub_df, code_change, index, namespace):
+def eval_file_recall(sub_df, code_change, index, namespace, conf):
     res = []
     query_prompt = query_config_file_prompt(code_change)
     token = get_embedding_tokenizer()
@@ -22,7 +22,7 @@ def eval_file_recall(sub_df, code_change, index, namespace):
             code_change["new_path"]))
         return None
     else:
-        embedding = get_embedding(query_prompt)['data'][0]['embedding']
+        embedding = get_embedding(query_prompt, conf)['data'][0]['embedding']
     print(code_change["old_path"], code_change["new_path"])
     for i, row in sub_df.iterrows():
         label = json.loads(row["label"])
@@ -65,7 +65,7 @@ def evaluate(project, project_path, label_csv, conf, mode):
                 sub_df = df[df["code_change_old_path"] == code_change["old_path"]]
             else:
                 sub_df = df[df["code_change_new_path"] == code_change["new_path"]]
-            eval_file_recall(sub_df, code_change, pc.Index(get_index_name(project, mode)), parent_commit[:10])
+            eval_file_recall(sub_df, code_change, pc.Index(get_index_name(project, mode)), parent_commit[:10], conf)
 
 
 

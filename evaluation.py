@@ -83,7 +83,5 @@ if __name__ == "__main__":
     label_path = os.path.join(conf.data_path, "label.csv")
     label_csv = pd.read_csv(label_path)
     for project in conf.projects:
-        if project != "dubbo":
-            continue
         project_path = os.path.join(conf.repo_path, project)
         evaluate(project, project_path, label_csv, conf, "test")

@@ -113,7 +113,7 @@ def build_init_conf_db(project, project_path, hash, conf, info):
                 reader = open(os.path.join(project_path, file), "r", encoding='utf-8')
                 content = reader.read()
                 total_conf_files += 1
-                futures.append(executor.submit(get_conf_embedding, index, project, content, relpath, hash[:10], info))
+                futures.append(executor.submit(get_conf_embedding, index, project, content, relpath, hash[:10], info, conf))
     ids = []
     print("Number of expected records:", len(futures))
     for future in as_completed(futures):
@@ -230,6 +230,7 @@ def build_commit_conf_db(project, project_path, last_commit, commit_list, conf, 
                     relpath = Path(modified_file.new_path).as_posix()
                 if content:
                     futures.append(executor.submit(get_conf_embedding, index, project, content, relpath, commit[:10], info, conf))
+
         ids = []
         # upsert updated files to db
         for future in as_completed(futures):
@@ -281,8 +282,6 @@ if __name__ == "__main__":
     label_csv = pd.read_csv(label_path)
     # example(conf)
     for project in conf.projects:
-        if project != "dubbo":
-            continue
         project_path = os.path.join(conf.repo_path, project)
         last_commit = get_last_commit(project_path)
         build_init_conf_db(project, project_path, last_commit, conf, "test")
